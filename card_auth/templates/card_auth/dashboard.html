@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>卡密管理控制台</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
+        .container { background: white; width: 800px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; margin-bottom: 30px; }
+        
+        .section { margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+        .btn { padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-green { background: #28a745; color: white; }
+        .btn-red { background: #dc3545; color: white; }
+        
+        input, select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-right: 10px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #666; font-weight: 600; }
+        
+        .card-code { font-family: monospace; font-size: 16px; color: #d63384; font-weight: bold; background: #fff0f6; padding: 2px 6px; border-radius: 4px; }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 400px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #666; }
+        .form-group input { width: 100%; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🔑 志愿者卡密管理系统</h1>
+
+    <!-- Add Account Section -->
+    <div class="section">
+        <h3>1. 志愿者账号库</h3>
+        <p style="color:#666; font-size:12px;">这里存的是真实的平台账号，以后您只需要添加一次</p>
+        <button class="btn btn-primary" onclick="openAddUserModal()">+ 添加新账号</button>
+        
+        <table>
+            <thead><tr><th>姓名</th><th>平台账号</th><th>操作</th></tr></thead>
+            <tbody id="account-list">
+                <!-- Loaded via JS -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Active Cards Section -->
+    <div class="section" style="border:none;">
+        <h3>2. 有效卡密 (发给学生)</h3>
+        <button class="btn btn-green" onclick="refreshData()">↻ 刷新列表</button>
+        <table>
+            <thead><tr><th>关联账号</th><th>卡密 (点击复制)</th><th>过期时间</th><th>操作</th></tr></thead>
+            <tbody id="card-list">
+                <!-- Loaded via JS -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div id="userModal" class="modal">
+    <div class="modal-content">
+        <h3>添加志愿者账号</h3>
+        <div class="form-group">
+            <label>备注名称 (如: 张三)</label>
+            <input type="text" id="new-name">
+        </div>
+        <div class="form-group">
+            <label>平台用户名</label>
+            <input type="text" id="new-username">
+        </div>
+        <div class="form-group">
+            <label>平台密码</label>
+            <input type="text" id="new-password">
+        </div>
+        <div style="text-align: right;">
+            <button class="btn" onclick="closeModal('userModal')">取消</button>
+            <button class="btn btn-primary" onclick="addAccount()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- Generate Card Modal -->
+<div id="cardModal" class="modal">
+    <div class="modal-content">
+        <h3>生成临时卡密</h3>
+        <p id="target-account-name" style="color:#007bff; font-weight:bold;"></p>
+        <input type="hidden" id="target-account-id">
+        
+        <div class="form-group">
+            <label>有效期</label>
+            <select id="card-duration" style="width:100%;">
+                <option value="1">1 小时</option>
+                <option value="24" selected>1 天 (24小时)</option>
+                <option value="168">7 天 (1周)</option>
+                <option value="720">30 天 (1月)</option>
+            </select>
+        </div>
+        <div style="text-align: right;">
+            <button class="btn" onclick="closeModal('cardModal')">取消</button>
+            <button class="btn btn-green" onclick="generateKey()">生成!</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE = ''; // Relative path
+
+    async function refreshData() {
+        const res = await fetch('/api/dashboard-data/');
+        const data = await res.json();
+        
+        // Render Accounts
+        const accTbody = document.getElementById('account-list');
+        accTbody.innerHTML = data.accounts.map(acc => `
+            <tr>
+                <td>${acc.name}</td>
+                <td>${acc.username}</td>
+                <td>
+                    <button class="btn btn-green" onclick="openGenCardModal(${acc.id}, '${acc.name}')">生成卡密</button>
+                    <button class="btn btn-red" onclick="deleteAccount(${acc.id})">删除</button>
+                </td>
+            </tr>
+        `).join('');
+
+        // Render Cards
+        const cardTbody = document.getElementById('card-list');
+        cardTbody.innerHTML = data.cards.map(card => `
+            <tr>
+                <td>${card.account_name}</td>
+                <td><span class="card-code" onclick="copy('${card.code}')" style="cursor:pointer;" title="点击复制">${card.code}</span></td>
+                <td>${card.expiry}</td>
+                <td>
+                    <button class="btn btn-red" onclick="deleteCard(${card.id})">作废</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function addAccount() {
+        const name = document.getElementById('new-name').value;
+        const user = document.getElementById('new-username').value;
+        const pass = document.getElementById('new-password').value;
+        
+        if(!name || !user || !pass) return alert("请填写完整");
+        
+        await fetch('/api/add-account/', {
+            method: 'POST',
+            body: JSON.stringify({name, username: user, password: pass})
+        });
+        closeModal('userModal');
+        refreshData();
+    }
+
+    async function generateKey() {
+        const accountId = document.getElementById('target-account-id').value;
+        const hours = document.getElementById('card-duration').value;
+        
+        await fetch('/api/generate-card/', {
+            method: 'POST',
+            body: JSON.stringify({account_id: accountId, duration_hours: hours})
+        });
+        closeModal('cardModal');
+        refreshData();
+    }
+
+    async function deleteAccount(id) {
+        if(!confirm("确定删除该账号吗？关联的卡密也会失效。")) return;
+        await fetch('/api/delete-account/', { method: 'POST', body: JSON.stringify({id}) });
+        refreshData();
+    }
+    
+    async function deleteCard(id) {
+        if(!confirm("确定作废该卡密吗？")) return;
+        await fetch('/api/delete-card/', { method: 'POST', body: JSON.stringify({id}) });
+        refreshData();
+    }
+
+    // Helpers
+    function openAddUserModal() { document.getElementById('userModal').style.display = 'flex'; }
+    function openGenCardModal(id, name) {
+        document.getElementById('target-account-id').value = id;
+        document.getElementById('target-account-name').textContent = "为 " + name + " 生成：";
+        document.getElementById('cardModal').style.display = 'flex'; 
+    }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function copy(text) {
+        navigator.clipboard.writeText(text);
+        alert("已复制卡密: " + text);
+    }
+
+    // Init
+    refreshData();
+</script>
+
+</body>
+</html>
