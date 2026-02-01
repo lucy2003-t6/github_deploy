@@ -72,6 +72,11 @@
             color: white;
         }
 
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
         input,
         select {
             padding: 8px;
@@ -109,6 +114,51 @@
             border-radius: 4px;
         }
 
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 34px;
+            height: 20px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 12px;
+            width: 12px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #2196F3;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(14px);
+        }
+
         /* Modal */
         .modal {
             display: none;
@@ -126,7 +176,14 @@
             background: white;
             padding: 25px;
             border-radius: 8px;
-            width: 400px;
+            width: 450px;
+        }
+
+        .sub-group {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
         }
 
         .form-group {
@@ -137,11 +194,18 @@
             display: block;
             margin-bottom: 5px;
             color: #666;
+            font-weight: bold;
         }
 
         .form-group input {
             width: 100%;
             box-sizing: border-box;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
         }
     </style>
 </head>
@@ -149,12 +213,16 @@
 <body>
 
     <div class="container">
+        <div class="header-actions">
+            <span>管理员，您好 | </span>
+            <a href="/logout/" class="logout-link">退出登录</a>
+        </div>
         <h1>🔑 志愿者卡密管理系统</h1>
 
         <!-- Add Account Section -->
         <div class="section">
             <h3>1. 志愿者账号库</h3>
-            <p style="color:#666; font-size:12px;">这里存的是真实的平台账号，以后您只需要添加一次</p>
+            <p style="color:#666; font-size:12px;">这里存的是真实的平台账号</p>
             <button class="btn btn-primary" onclick="openAddUserModal()">+ 添加新账号</button>
 
             <table>
@@ -165,22 +233,21 @@
                         <th>操作</th>
                     </tr>
                 </thead>
-                <tbody id="account-list">
-                    <!-- Loaded via JS -->
-                </tbody>
+                <tbody id="account-list"></tbody>
             </table>
         </div>
 
         <!-- Active Cards Section -->
         <div class="section" style="border:none;">
-            <h3>2. 有效卡密 (发给学生)</h3>
+            <h3>2. 有效卡密管理</h3>
+            <p style="color:#666; font-size:12px;">生成的卡密可以绑定一个“学生登录账号”，供学生自己在网页查看。</p>
             <button class="btn btn-green" onclick="refreshData()">↻ 刷新列表</button>
             <table>
                 <thead>
                     <tr>
                         <th>关联账号</th>
                         <th>卡密</th>
-                        <th>绑定学生</th>
+                        <th>绑定学生账号</th>
                         <th>设备绑定</th>
                         <th>自动续期</th>
                         <th>过期时间</th>
@@ -196,18 +263,9 @@
     <div id="userModal" class="modal">
         <div class="modal-content">
             <h3>添加志愿者账号</h3>
-            <div class="form-group">
-                <label>备注名称 (如: 张三)</label>
-                <input type="text" id="new-name">
-            </div>
-            <div class="form-group">
-                <label>平台用户名</label>
-                <input type="text" id="new-username">
-            </div>
-            <div class="form-group">
-                <label>平台密码</label>
-                <input type="text" id="new-password">
-            </div>
+            <div class="form-group"><label>备注名称 (如: 张三)</label><input type="text" id="new-name"></div>
+            <div class="form-group"><label>平台用户名</label><input type="text" id="new-username"></div>
+            <div class="form-group"><label>平台密码</label><input type="text" id="new-password"></div>
             <div style="text-align: right;">
                 <button class="btn" onclick="closeModal('userModal')">取消</button>
                 <button class="btn btn-primary" onclick="addAccount()">保存</button>
@@ -219,18 +277,38 @@
     <div id="cardModal" class="modal">
         <div class="modal-content">
             <h3>生成临时卡密</h3>
-            <p id="target-account-name" style="color:#007bff; font-weight:bold;"></p>
+            <p id="target-account-name" style="color:#007bff; font-weight:bold; margin-bottom: 15px;"></p>
             <input type="hidden" id="target-account-id">
 
-            <div class="form-group">
-                <label>有效期</label>
-                <select id="card-duration" style="width:100%;">
-                    <option value="1">1 小时</option>
-                    <option value="24" selected>1 天 (24小时)</option>
-                    <option value="168">7 天 (1周)</option>
-                    <option value="720">30 天 (1月)</option>
-                </select>
+            <div class="sub-group">
+                <div class="form-group">
+                    <label>有效期</label>
+                    <select id="card-duration" style="width:100%;">
+                        <option value="24" selected>1 天</option>
+                        <option value="168">7 天</option>
+                        <option value="720">30 天</option>
+                        <option value="8760">1 年</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>初始自动续期</label>
+                    <input type="checkbox" id="card-auto-renew" style="width:auto;"> <span class="hint">开启后永不过期</span>
+                </div>
             </div>
+
+            <div class="sub-group" style="border: 1px dashed #28a745; background: #f0fff4;">
+                <div class="form-group">
+                    <label>创建学生登录账号 (可选)</label>
+                    <span class="hint">如果不填，则仅生成卡密，学生无法登录网页查看。</span>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="student-username" placeholder="学生登录用户名 (选填)">
+                </div>
+                <div class="form-group">
+                    <input type="text" id="student-password" placeholder="学生登录密码 (选填)">
+                </div>
+            </div>
+
             <div style="text-align: right;">
                 <button class="btn" onclick="closeModal('cardModal')">取消</button>
                 <button class="btn btn-green" onclick="generateKey()">生成!</button>
@@ -239,15 +317,12 @@
     </div>
 
     <script>
-        const API_BASE = ''; // Relative path
-
         async function refreshData() {
             const res = await fetch('/api/dashboard-data/');
             const data = await res.json();
 
             // Render Accounts
-            const accTbody = document.getElementById('account-list');
-            accTbody.innerHTML = data.accounts.map(acc => `
+            document.getElementById('account-list').innerHTML = data.accounts.map(acc => `
             <tr>
                 <td>${acc.name}</td>
                 <td>${acc.username}</td>
@@ -259,8 +334,7 @@
         `).join('');
 
             // Render Cards
-            const cardTbody = document.getElementById('card-list');
-            cardTbody.innerHTML = data.cards.map(card => `
+            document.getElementById('card-list').innerHTML = data.cards.map(card => `
             <tr>
                 <td>${card.account_name}</td>
                 <td><span class="card-code" onclick="copy('${card.code}')" style="cursor:pointer;" title="点击复制">${card.code}</span></td>
@@ -284,62 +358,62 @@
         `).join('');
         }
 
+        async function toggleRenew(id, status) {
+            await fetch('/api/toggle-renew/', {
+                method: 'POST',
+                body: JSON.stringify({ id, auto_renew: status })
+            });
+            refreshData();
+        }
+
+        async function unbindCard(id) {
+            if (!confirm("确定要解除设备绑定吗？\n解除后，卡密可以在新电脑上使用（第一次使用会再次绑定）。")) return;
+            await fetch('/api/unbind-card/', { method: 'POST', body: JSON.stringify({ id }) });
+            refreshData();
+        }
+
         async function addAccount() {
             const name = document.getElementById('new-name').value;
             const user = document.getElementById('new-username').value;
             const pass = document.getElementById('new-password').value;
-
             if (!name || !user || !pass) return alert("请填写完整");
-
-            await fetch('/api/add-account/', {
-                method: 'POST',
-                body: JSON.stringify({ name, username: user, password: pass })
-            });
-            closeModal('userModal');
-            refreshData();
+            await fetch('/api/add-account/', { method: 'POST', body: JSON.stringify({ name, username: user, password: pass }) });
+            closeModal('userModal'); refreshData();
         }
 
         async function generateKey() {
             const accountId = document.getElementById('target-account-id').value;
             const hours = document.getElementById('card-duration').value;
+            const autoRenew = document.getElementById('card-auto-renew').checked;
+            const sUser = document.getElementById('student-username').value;
+            const sPass = document.getElementById('student-password').value;
 
             await fetch('/api/generate-card/', {
                 method: 'POST',
-                body: JSON.stringify({ account_id: accountId, duration_hours: hours })
+                body: JSON.stringify({
+                    account_id: accountId, duration_hours: hours, auto_renew: autoRenew,
+                    student_user: sUser, student_pass: sPass
+                })
             });
-            closeModal('cardModal');
-            refreshData();
+            closeModal('cardModal'); refreshData();
         }
 
-        async function deleteAccount(id) {
-            if (!confirm("确定删除该账号吗？关联的卡密也会失效。")) return;
-            await fetch('/api/delete-account/', { method: 'POST', body: JSON.stringify({ id }) });
-            refreshData();
-        }
+        async function deleteAccount(id) { if (confirm("确定删除？")) { await fetch('/api/delete-account/', { method: 'POST', body: JSON.stringify({ id }) }); refreshData(); } }
+        async function deleteCard(id) { if (confirm("确定作废？")) { await fetch('/api/delete-card/', { method: 'POST', body: JSON.stringify({ id }) }); refreshData(); } }
 
-        async function deleteCard(id) {
-            if (!confirm("确定作废该卡密吗？")) return;
-            await fetch('/api/delete-card/', { method: 'POST', body: JSON.stringify({ id }) });
-            refreshData();
-        }
-
-        // Helpers
         function openAddUserModal() { document.getElementById('userModal').style.display = 'flex'; }
         function openGenCardModal(id, name) {
             document.getElementById('target-account-id').value = id;
             document.getElementById('target-account-name').textContent = "为 " + name + " 生成：";
+            document.getElementById('student-username').value = ""; // clear
+            document.getElementById('student-password').value = ""; // clear
             document.getElementById('cardModal').style.display = 'flex';
         }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function copy(text) {
-            navigator.clipboard.writeText(text);
-            alert("已复制卡密: " + text);
-        }
+        function copy(text) { navigator.clipboard.writeText(text); alert("已复制: " + text); }
 
-        // Init
         refreshData();
     </script>
-
 </body>
 
 </html>
