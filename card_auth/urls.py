@@ -11,4 +11,6 @@ urlpatterns = [
     path('generate-card/', views.generate_card, name='generate_card'),
     path('delete-account/', views.delete_account, name='delete_account'),
     path('delete-card/', views.delete_card, name='delete_card'),
+    path('toggle-renew/', views.toggle_renew, name='toggle_renew'),
+    path('unbind-card/', views.unbind_card, name='unbind_card'),
 ]

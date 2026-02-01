@@ -21,8 +21,10 @@ from card_auth import views  # Import views directly
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('card_auth.urls')),
-    path('dashboard/', views.dashboard), # Specific Dashboard URL
-    path('', views.dashboard),           # Root URL -> Dashboard (Convenience)
+    path('dashboard/', views.dashboard),
+    path('login/', views.login_view),
+    path('logout/', views.logout_view),
+    path('', views.dashboard), # Root now redirects to dashboard (which checks login)
 ]
 
 
