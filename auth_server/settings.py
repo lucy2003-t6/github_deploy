@@ -29,6 +29,7 @@ ALLOWED_HOSTS = ['*']  # For development ease
 
 CSRF_TRUSTED_ORIGINS = ['https://github-deploy-f5sj.onrender.com']
 CORS_ALLOW_ALL_ORIGINS = True
+# Force Update: 2026-02-01 ( Ensure CORS & CSRF )
 
 
 
